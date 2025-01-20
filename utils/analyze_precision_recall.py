@@ -6,6 +6,7 @@ import h5py
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--ratio', type=int, default=64, help='sampling ratio')
 parser.add_argument('--dump_dir', default='dump', help='dump folder path [default: dump]')
 parser.add_argument('--num_out_points', type=int, default=32, help='Number of output points [2, 4, ..., 1024] [default: 32]')
 

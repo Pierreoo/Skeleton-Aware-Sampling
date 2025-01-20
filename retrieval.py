@@ -18,6 +18,8 @@ def parse_args():
     """PARAMETERS"""
     parser = argparse.ArgumentParser('training')
 
+    parser.add_argument('--ratio', type=int, default=64, help='sampling ratio')
+
     parser.add_argument('--num_class', default=40, type=int, choices=[10, 40], help='training on ModelNet10/40')
     parser.add_argument('--num_point', type=int, default=1024, help='Point Number')
     parser.add_argument('--num_delaunay', type=int, default=32, help='Delaunay')
@@ -31,6 +33,7 @@ def parse_args():
 
 def main():
     args = parse_args()
+    print(args)
 
     '''HYPER PARAMETER'''
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -39,8 +42,8 @@ def main():
     print('Load dataset ...')
 
     # ------------------ ModelNet -----------------
-    data_path = 'data/modelnet40_normal_resampled/'
-    sample_path = 'log/sampling_2022-11-11-11-20-24/test_sampling/best_points/'
+    data_path = '../data/modelnet/ModelNet'
+    sample_path = f'sampling/log/{1024//args.ratio}_MS3D/test_sampling/best_points/'
     test_dataset = ModelNetTestDataLoader(root=data_path, sampled_path=sample_path, args=args)
     testDataLoader_spl = torch.utils.data.DataLoader(test_dataset, batch_size=args.spl_batch_size, shuffle=False, num_workers=4)
 
@@ -49,8 +52,8 @@ def main():
     model_cls = PointNet(args).to(device)
 
     try:
-        checkpoint = torch.load('./classification/log/pointnet_2022-10-24-20-25_seed_390/best_model.pth')
-        model_cls.load_state_dict(checkpoint['model_state_dict'])
+        checkpoint = torch.load('./classification/log/pointnet_2022-10-24-20-25_seed_390/best_model.pth', map_location=device)
+        model_cls.load_state_dict(checkpoint['model_state_dict'], )
         print('Load pretrained classification model')
     except:
         print('Error: No existing classification model')

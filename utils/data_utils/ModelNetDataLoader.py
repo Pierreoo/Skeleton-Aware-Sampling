@@ -81,9 +81,11 @@ def delaunay_graph(point_set, ndelaunay):
 
 
 class ModelNetDataLoader(Dataset):
-    def __init__(self, root, args, split='train'):
+    def __init__(self, root, root_skel, args, split='train'):
         self.root = root
+        self.root_skel = root_skel
         self.npoints = args.num_point
+        self.npoints_skel = args.num_point_skel
         self.ndelaunay = args.num_delaunay
         self.split = split
         self.uniform = args.use_uniform_sample
@@ -111,6 +113,8 @@ class ModelNetDataLoader(Dataset):
         shape_names = ['_'.join(x.split('_')[0:-1]) for x in shape_ids[split]]
         self.datapath = [(shape_names[i], os.path.join(self.root, shape_names[i], shape_ids[split][i]) + '.txt') for i
                          in range(len(shape_ids[split]))]
+        self.datapath_skel = [(shape_names[i], os.path.join(self.root_skel, shape_names[i], shape_ids[split][i]) + '.txt') for i
+                              in range(len(shape_ids[split]))]
         print('The size of %s data is %d' % (split, len(self.datapath)))
 
         if self.uniform:
@@ -120,18 +124,24 @@ class ModelNetDataLoader(Dataset):
 
         self.list_of_points = []
         self.list_of_labels = []
+        self.list_of_points_skel = []
 
         for index in tqdm(range(len(self.datapath))):
             fn = self.datapath[index]
+            fn_skel = self.datapath_skel[index]
             cls = self.classes[fn[0]]
             point_set = np.loadtxt(fn[1], delimiter=',').astype(np.float32)
+            point_set_skel = np.loadtxt(fn_skel[1]).astype(np.float32)
 
             if self.uniform:
                 point_set = farthest_point_sample(point_set, self.npoints)
+                point_set_skel = farthest_point_sample(point_set_skel, self.npoints_skel)
             else:
                 point_set = point_set[0:self.npoints, :]
+                point_set_skel = point_set_skel[0:self.npoints_skel, :]
 
             self.list_of_points.append(point_set)
+            self.list_of_points_skel.append(point_set_skel)
             self.list_of_labels.append(int(cls))
 
         if self.use_delaunay:
@@ -169,14 +179,14 @@ class ModelNetDataLoader(Dataset):
         #     else:
         #         point_set = point_set[0:self.npoints, :]
 
-        point_set, label, dly = self.list_of_points[index], self.list_of_labels[index], self.list_of_dlyidx[index]
+        point_set, point_set_skel, label, dly = self.list_of_points[index], self.list_of_points_skel[index], self.list_of_labels[index], self.list_of_dlyidx[index]
         fn = self.datapath[index]
 
-        point_set[:, 0:3] = pc_normalize(point_set[:, 0:3])
-        if not self.use_normals:
-            point_set = point_set[:, 0:3]
+        combined_pc = np.vstack((point_set[:, 0:3], point_set_skel[:, 0:3]))
+        combined_normalized_pc = pc_normalize(combined_pc)
+        point_set, point_set_skel = combined_normalized_pc[:point_set.shape[0]], combined_normalized_pc[point_set.shape[0]:]
 
-        return point_set, label, os.path.basename(fn[1])[:-4], dly
+        return point_set, point_set_skel, label, os.path.basename(fn[1])[:-4], dly
 
 
 class ModelNetTestDataLoader(Dataset):
